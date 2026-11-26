@@ -1198,6 +1198,32 @@
     </div>
   </div>
 
+  <!-- 編輯點擊紀錄 Modal (時間 + 備註) -->
+  <div class="modal-backdrop" id="editLogModal" style="z-index: 110;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>編輯點擊紀錄</h2>
+        <button class="icon-btn" onclick="closeModal('editLogModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editLogCounterId" />
+        <input type="hidden" id="editLogId" />
+        <div class="form-group">
+          <label for="editLogTime">紀錄時間</label>
+          <input type="datetime-local" step="1" id="editLogTime" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label for="editLogNote">備註事項</label>
+          <textarea id="editLogNote" class="form-control" rows="3" placeholder="輸入此筆點擊的備註內容..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('editLogModal')">取消</button>
+        <button class="btn btn-primary" id="btnSaveLogEdit">儲存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 小計算機 Modal -->
   <div class="modal-backdrop" id="calcModal">
     <div class="modal calc-modal" id="calcModalCard">
@@ -1440,6 +1466,26 @@
       const d = new Date(ts);
       const pad = n => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function toDateTimeLocalValue(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function parseDateTimeLocalValue(val) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(val);
+      if (!m) return NaN;
+      return new Date(
+        Number(m[1]),
+        Number(m[2]) - 1,
+        Number(m[3]),
+        Number(m[4]),
+        Number(m[5]),
+        Number(m[6] || 0),
+        0
+      ).getTime();
     }
 
     function showToast(msg) {
@@ -1771,26 +1817,63 @@
             ${l.note ? `<div class="log-note-text">📝 ${escapeHtml(l.note)}</div>` : ''}
           </div>
           <div style="display:flex; gap:6px;">
-            <button class="icon-btn" onclick="editLogNote('${c.id}', '${l.id}')" title="編輯此時間點備註">📝</button>
+            <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'time')" title="編輯此筆時間">🕒</button>
+            <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'note')" title="編輯此筆備註">📝</button>
             <button class="icon-btn" onclick="deleteLog('${c.id}', '${l.id}')" title="刪除此筆紀錄">🗑</button>
           </div>
         </div>
       `).join('');
     }
 
-    function editLogNote(counterId, logId) {
+    function openEditLogModal(counterId, logId, focusField = 'time') {
       const c = state.counters.find(x => x.id === counterId);
       if (!c) return;
       const log = c.logs.find(l => l.id === logId);
       if (!log) return;
-      const newNote = prompt(`編輯 ${formatDateTime(log.timestamp)} 的備註事項：`, log.note || '');
-      if (newNote === null) return;
-      log.note = newNote.trim();
-      saveState();
-      if (historyTab === 'list') renderHistoryList();
-      else renderCalendarDayDetails(filterDateStr);
-      showToast('已更新點擊備註');
+
+      document.getElementById('editLogCounterId').value = counterId;
+      document.getElementById('editLogId').value = logId;
+      document.getElementById('editLogTime').value = toDateTimeLocalValue(log.timestamp);
+      document.getElementById('editLogNote').value = log.note || '';
+
+      openModal('editLogModal');
+
+      setTimeout(() => {
+        const target = document.getElementById(focusField === 'note' ? 'editLogNote' : 'editLogTime');
+        if (target) target.focus();
+      }, 60);
     }
+
+    document.getElementById('btnSaveLogEdit').addEventListener('click', () => {
+      const counterId = document.getElementById('editLogCounterId').value;
+      const logId = document.getElementById('editLogId').value;
+      const timeStr = document.getElementById('editLogTime').value;
+      const noteStr = document.getElementById('editLogNote').value.trim();
+
+      const c = state.counters.find(x => x.id === counterId);
+      if (!c) return;
+      const log = c.logs.find(l => l.id === logId);
+      if (!log) return;
+
+      const parsedTs = parseDateTimeLocalValue(timeStr);
+      if (!Number.isFinite(parsedTs)) {
+        showToast('請輸入有效的日期與時間');
+        return;
+      }
+
+      log.timestamp = parsedTs;
+      log.note = noteStr;
+      c.logs.sort((a, b) => b.timestamp - a.timestamp);
+
+      saveState();
+      render();
+      if (document.getElementById('historyModal').classList.contains('open')) {
+        if (historyTab === 'list') renderHistoryList();
+        else renderCalendar();
+      }
+      closeModal('editLogModal');
+      showToast('已更新點擊紀錄');
+    });
 
     function deleteLog(counterId, logId) {
       const c = state.counters.find(x => x.id === counterId);
@@ -1884,7 +1967,10 @@
                   </div>
                   ${l.note ? `<div class="log-note-text">📝 ${escapeHtml(l.note)}</div>` : ''}
                 </div>
-                <button class="icon-btn" onclick="editLogNote('${c.id}', '${l.id}')" title="編輯備註">📝</button>
+                <div style="display:flex; gap:6px;">
+                  <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'time')" title="編輯時間">🕒</button>
+                  <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'note')" title="編輯備註">📝</button>
+                </div>
               </div>
             `).join('')}</div>`
         }
@@ -2195,7 +2281,7 @@
     function addNoteToLastTap() {
       const c = state.counters.find(x => x.id === singleCounterId);
       if (!c || c.logs.length === 0) return showToast('尚無點擊紀錄可加備註');
-      editLogNote(c.id, c.logs[0].id);
+      openEditLogModal(c.id, c.logs[0].id, 'note');
     }
 
     document.getElementById('singleTapArea').addEventListener('click', () => tapFromSingle(1));
@@ -2281,6 +2367,16 @@
     function openModal(id) { document.getElementById(id).classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+    function getTopOpenModal() {
+      const openModals = Array.from(document.querySelectorAll('.modal-backdrop.open'));
+      if (openModals.length === 0) return null;
+      return openModals.reduce((top, el) => {
+        const zTop = parseInt(getComputedStyle(top).zIndex, 10) || 0;
+        const zEl = parseInt(getComputedStyle(el).zIndex, 10) || 0;
+        return zEl >= zTop ? el : top;
+      });
+    }
+
     document.querySelectorAll('.modal-backdrop').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target === el) el.classList.remove('open');
@@ -2320,12 +2416,13 @@
 
     /* Keyboard Shortcuts (Calculator, Modals & Single Mode) */
     document.addEventListener('keydown', e => {
-      const anyModalOpen = document.querySelector('.modal-backdrop.open');
+      const topModal = getTopOpenModal();
+      const anyModalOpen = Boolean(topModal);
       const calcOpen = document.getElementById('calcModal').classList.contains('open');
 
       if (e.key === 'Escape') {
-        if (anyModalOpen) {
-          anyModalOpen.classList.remove('open');
+        if (topModal) {
+          topModal.classList.remove('open');
           return;
         }
         if (singleCounterId) {
