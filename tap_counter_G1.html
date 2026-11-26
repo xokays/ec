@@ -1,0 +1,3051 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" id="metaThemeColor" content="#ffffff" />
+  <title>點擊計數管理器 (Tap Counter Manager)</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --surface-footer: #f9fafb;
+      --text: #111827;
+      --text-muted: #4b5563;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --danger-bg-hover: #fecaca;
+      --btn-bg: #f1f5f9;
+      --btn-hover: #e2e8f0;
+      --btn-active-bg: #dbeafe;
+      --btn-active-text: #1d4ed8;
+      --badge-plus-bg: #dcfce7;
+      --badge-plus-text: #166534;
+      --badge-minus-bg: #fee2e2;
+      --badge-minus-text: #991b1b;
+      --cal-selected-bg: #eff6ff;
+      --calc-display-bg: #f8fafc;
+      --calc-op-bg: #eff6ff;
+      --calc-op-text: #1d4ed8;
+      --calc-paren-bg: #f3e8ff;
+      --calc-paren-text: #6d28d9;
+      --shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+      --radius: 16px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0b1120;
+      --surface: #1e293b;
+      --surface-alt: #0f172a;
+      --surface-footer: #162032;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #f87171;
+      --danger-bg: rgba(239, 68, 68, 0.18);
+      --danger-bg-hover: rgba(239, 68, 68, 0.3);
+      --btn-bg: #334155;
+      --btn-hover: #475569;
+      --btn-active-bg: rgba(59, 130, 246, 0.25);
+      --btn-active-text: #93c5fd;
+      --badge-plus-bg: rgba(34, 197, 94, 0.2);
+      --badge-plus-text: #86efac;
+      --badge-minus-bg: rgba(239, 68, 68, 0.2);
+      --badge-minus-text: #fca5a5;
+      --cal-selected-bg: rgba(59, 130, 246, 0.22);
+      --calc-display-bg: #0f172a;
+      --calc-op-bg: rgba(59, 130, 246, 0.2);
+      --calc-op-text: #93c5fd;
+      --calc-paren-bg: rgba(139, 92, 246, 0.22);
+      --calc-paren-text: #c4b5fd;
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      overflow-x: clip;
+      touch-action: manipulation;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Segoe UI", "Microsoft JhengHei", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: calc(92px + env(safe-area-inset-bottom));
+      transition: background 0.2s, color 0.2s;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      touch-action: manipulation;
+      color: inherit;
+      user-select: none;
+    }
+
+    /* Desktop Site Warning Banner */
+    .desktop-site-banner {
+      display: none;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid #fcd34d;
+    }
+
+    /* Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: calc(10px + env(safe-area-inset-top)) 16px 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 13px;
+      min-height: 40px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: var(--btn-bg);
+      color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { background: var(--btn-hover); }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .btn.active { background: var(--btn-active-bg); color: var(--btn-active-text); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger-bg-hover); }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 16px auto;
+      padding: 0 14px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      box-shadow: var(--shadow);
+    }
+
+    /* Grid: Large vs Small View */
+    .counter-grid.large {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+      gap: 16px;
+    }
+
+    .counter-grid.small {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Counter Card */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border-top: 6px solid var(--accent, #3b82f6);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+    }
+
+    .card.dragging {
+      opacity: 0.5;
+      transform: scale(0.98);
+    }
+
+    .card-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .card-title-wrap {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .card-title {
+      font-size: 1.18rem;
+      font-weight: 800;
+      margin: 0;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+
+    .card-note {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .card-actions-mini {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      font-size: 1.1rem;
+    }
+
+    .icon-btn:hover { background: var(--btn-hover); color: var(--text); }
+    .icon-btn:active { transform: scale(0.92); }
+
+    /* Stats Chips */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    .stat-pill {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    /* Large View Counter Controls */
+    .count-display-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--surface-alt);
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .count-number {
+      font-size: 2.65rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent, #3b82f6);
+      text-align: center;
+      flex: 1;
+      user-select: none;
+      min-width: 64px;
+    }
+
+    .tap-btn {
+      height: 60px;
+      border-radius: 14px;
+      font-size: 1.7rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.08s, filter 0.15s;
+      user-select: none;
+    }
+
+    .tap-btn:active { transform: scale(0.92); }
+
+    .tap-btn.plus {
+      width: 96px;
+      background: var(--accent, #3b82f6);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+    }
+
+    .tap-btn.minus {
+      width: 58px;
+      background: var(--btn-bg);
+      color: var(--text);
+    }
+
+    /* Clean Action Bar Footer */
+    .card-footer {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr auto;
+      gap: 8px;
+      padding: 10px 14px 12px 14px;
+      background: var(--surface-footer);
+      border-top: 1px solid var(--border);
+    }
+
+    .card-footer .btn {
+      min-height: 42px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+    }
+
+    /* Small View Layout Override */
+    .counter-grid.small .card {
+      border-top: none;
+      border-left: 6px solid var(--accent, #3b82f6);
+    }
+
+    .counter-grid.small .card-body {
+      padding: 12px 14px;
+      gap: 10px;
+    }
+
+    .counter-grid.small .stats-row {
+      display: none;
+    }
+
+    .counter-grid.small .small-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .counter-grid.small .count-display-box {
+      padding: 4px;
+      gap: 8px;
+    }
+
+    .counter-grid.small .count-number {
+      font-size: 1.75rem;
+      min-width: 52px;
+    }
+
+    .counter-grid.small .tap-btn {
+      height: 48px;
+      border-radius: 12px;
+      font-size: 1.35rem;
+    }
+
+    .counter-grid.small .tap-btn.minus { width: 48px; }
+    .counter-grid.small .tap-btn.plus { width: 68px; }
+
+    .counter-grid.small .card-footer {
+      padding: 8px 14px;
+    }
+
+    /* Desktop Floating Add Button */
+    .fab {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 40;
+      height: 56px;
+      padding: 0 22px;
+      border-radius: 28px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fab:hover { background: var(--primary-hover); }
+    .fab:active { transform: scale(0.95); }
+
+    /* Mobile Fixed Bottom Navigation Bar */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom)) 6px;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 2px;
+      min-height: 52px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .nav-item .nav-icon {
+      font-size: 1.3rem;
+      line-height: 1.2;
+    }
+
+    .nav-item.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .nav-item.active {
+      background: var(--btn-active-bg);
+      color: var(--btn-active-text);
+    }
+
+    .nav-item:active {
+      transform: scale(0.94);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.58);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+    }
+
+    .modal.wide { max-width: 760px; }
+
+    /* 電腦版計算機：精簡排版 + 自動等比例縮放，不出現上下捲軸 */
+    .modal.calc-modal {
+      max-width: 340px;
+      max-height: none;
+      overflow: visible;
+    }
+    .modal.calc-modal .modal-header {
+      padding: 11px 14px;
+    }
+    .modal.calc-modal .modal-header h2 {
+      font-size: 1.04rem;
+    }
+    .modal.calc-modal .icon-btn {
+      width: 34px;
+      height: 34px;
+      font-size: 1rem;
+    }
+    .modal.calc-modal .modal-body {
+      padding: 12px 14px;
+      overflow: visible;
+    }
+
+    .modal-header {
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--surface-footer);
+      flex-shrink: 0;
+    }
+
+    /* Google Sync Card */
+    .sync-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .sync-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .sync-title {
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sync-status-pill {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--btn-bg);
+      color: var(--text-muted);
+    }
+    .sync-status-pill.connected {
+      background: var(--badge-plus-bg);
+      color: var(--badge-plus-text);
+    }
+    .sync-warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.86rem;
+      margin-bottom: 12px;
+      line-height: 1.45;
+    }
+    .sync-account-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .sync-actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .sync-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.9rem;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .sync-help {
+      margin-top: 10px;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      border-top: 1px dashed var(--border);
+      padding-top: 8px;
+    }
+    .sync-help summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--primary);
+      user-select: none;
+    }
+    .sync-help ol {
+      margin: 8px 0 0 0;
+      padding-left: 18px;
+      line-height: 1.55;
+    }
+    .sync-help code {
+      background: var(--btn-bg);
+      padding: 1px 5px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      word-break: break-all;
+    }
+
+    /* Mobile Action Sheet Menu Items */
+    .sheet-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sheet-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 16px;
+      border-radius: 14px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      font-size: 1.02rem;
+      font-weight: 700;
+      text-align: left;
+    }
+    .sheet-item:active { background: var(--btn-hover); }
+    .sheet-badge {
+      font-size: 0.9rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      background: var(--surface-alt);
+      color: var(--text);
+    }
+    .form-control:focus {
+      outline: 2px solid #93c5fd;
+      border-color: var(--primary);
+    }
+
+    .color-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .color-swatch {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .color-swatch.selected {
+      border-color: var(--text);
+      transform: scale(1.12);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      gap: 6px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent;
+      text-align: center;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* History List */
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .log-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--surface);
+    }
+    .log-main { flex: 1; min-width: 0; }
+    .log-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.94rem;
+      flex-wrap: wrap;
+    }
+    .log-badge {
+      padding: 2px 9px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .log-badge.plus { background: var(--badge-plus-bg); color: var(--badge-plus-text); }
+    .log-badge.minus { background: var(--badge-minus-bg); color: var(--badge-minus-text); }
+    .log-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .log-note-text {
+      margin-top: 8px;
+      font-size: 0.95rem;
+      background: var(--surface-alt);
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    /* Calendar */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 8px;
+      font-size: 1.05rem;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    .cal-weekday {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 6px 0;
+    }
+    .cal-day {
+      min-height: 54px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 5px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      background: var(--surface);
+    }
+    .cal-day.empty { border-color: transparent; background: transparent; cursor: default; }
+    .cal-day.today { border-color: var(--primary); }
+    .cal-day.selected { background: var(--cal-selected-bg); border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+    .cal-day-num { font-size: 0.9rem; font-weight: 700; }
+    .cal-day-count {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      color: #fff;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Calculator Styles (Compact Proportional Desktop Layout) */
+    .calc-display {
+      background: var(--calc-display-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: right;
+      margin-bottom: 10px;
+      min-height: 74px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      word-break: break-all;
+    }
+
+    .calc-expr {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      min-height: 1.5rem;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.4px;
+    }
+
+    .calc-preview {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+
+    .calc-preview.error {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--danger);
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .calc-btn {
+      height: 44px;
+      border-radius: 11px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      background: var(--btn-bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.08s, background 0.12s;
+      user-select: none;
+    }
+    .calc-btn:hover { background: var(--btn-hover); }
+    .calc-btn:active { transform: scale(0.93); }
+    .calc-btn.op { background: var(--calc-op-bg); color: var(--calc-op-text); }
+    .calc-btn.paren { background: var(--calc-paren-bg); color: var(--calc-paren-text); }
+    .calc-btn.clear { background: var(--danger-bg); color: var(--danger); }
+    .calc-btn.eq { background: var(--primary); color: #fff; }
+    .calc-btn.eq:hover { background: var(--primary-hover); }
+
+    .calc-tools {
+      margin-top: 10px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+    .calc-tools .btn {
+      min-height: 36px;
+      padding: 6px 10px;
+      font-size: 0.86rem;
+      white-space: nowrap;
+    }
+    .calc-tools .form-control {
+      min-height: 36px;
+      padding: 6px 8px;
+      font-size: 0.88rem;
+      border-radius: 10px;
+    }
+
+    .calc-history {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 82px;
+      overflow-y: auto;
+    }
+
+    .calc-history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.86rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: var(--surface-alt);
+      cursor: pointer;
+    }
+    .calc-history-item:hover { background: var(--btn-hover); }
+
+    /* Single Fullscreen Mode */
+    .single-overlay {
+      position: fixed;
+      inset: 0;
+      height: 100dvh;
+      z-index: 90;
+      background: var(--accent, #3b82f6);
+      color: #fff;
+      display: none;
+      flex-direction: column;
+    }
+    .single-overlay.open { display: flex; }
+
+    .single-header {
+      padding: calc(12px + env(safe-area-inset-top)) 16px 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.14);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .single-header-btn {
+      background: rgba(255,255,255,0.22);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+    .single-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .single-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+    .single-note { opacity: 0.92; font-size: 1rem; max-width: 500px; margin-bottom: 16px; }
+    .single-count {
+      font-size: 5.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      margin: 10px 0;
+    }
+    .single-hint { font-size: 0.95rem; opacity: 0.88; margin-top: 12px; }
+
+    .single-bottom {
+      padding: 14px 16px calc(16px + env(safe-area-inset-bottom)) 16px;
+      background: rgba(0,0,0,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .single-action-btn {
+      height: 60px;
+      flex: 1;
+      max-width: 130px;
+      padding: 0 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.22);
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+    .single-action-btn.primary {
+      background: #fff;
+      color: #111827;
+      flex: 1.6;
+      max-width: 220px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(88px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #111827;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 0.94rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s;
+      z-index: 200;
+      border: 1px solid rgba(255,255,255,0.12);
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .reorder-controls { display: none; gap: 6px; }
+    .reorder-active .reorder-controls { display: inline-flex; }
+    .reorder-active .card { cursor: grab; }
+
+    /* Mobile-First Mode (Phones & Coarse Touch Devices) */
+    @media (max-width: 820px), (hover: none) and (pointer: coarse) {
+      .desktop-toolbar, .fab {
+        display: none !important;
+      }
+
+      .mobile-bottom-nav {
+        display: grid;
+      }
+
+      body {
+        padding-bottom: calc(86px + env(safe-area-inset-bottom));
+      }
+
+      .app-header {
+        padding: calc(12px + env(safe-area-inset-top)) 14px 12px 14px;
+      }
+
+      .app-title {
+        font-size: 1.2rem;
+      }
+
+      .container {
+        margin: 12px auto;
+        padding: 0 12px;
+      }
+
+      .card-title {
+        font-size: 1.22rem;
+      }
+
+      .card-note {
+        font-size: 0.96rem;
+      }
+
+      .count-number {
+        font-size: 2.9rem;
+      }
+
+      .tap-btn {
+        height: 62px;
+      }
+
+      .tap-btn.minus {
+        width: 64px;
+      }
+
+      .tap-btn.plus {
+        width: 112px;
+      }
+
+      /* Bottom Sheet Modals on Mobile */
+      .modal-backdrop {
+        align-items: flex-end;
+        padding: 0;
+      }
+
+      .modal, .modal.wide, .modal.calc-modal {
+        max-width: 100%;
+        width: 100%;
+        border-radius: 22px 22px 0 0;
+        max-height: 90dvh;
+        overflow: hidden;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        transform: none !important;
+      }
+
+      .modal.calc-modal .modal-body {
+        overflow-y: auto;
+        padding: 14px 16px calc(22px + env(safe-area-inset-bottom)) 16px;
+      }
+
+      .modal.calc-modal .calc-btn {
+        height: 52px;
+        font-size: 1.26rem;
+      }
+
+      .modal-body {
+        padding-bottom: calc(22px + env(safe-area-inset-bottom));
+      }
+
+      .modal-footer {
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+      }
+
+      .modal-footer .btn {
+        flex: 1;
+        min-height: 48px;
+        font-size: 1rem;
+      }
+
+      .single-hint-desktop {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="desktop-site-banner" id="desktopSiteBanner">
+    <span>💡 偵測到手機可能開啟了「電腦版網站」，建議在瀏覽器右上角 ⋮ 取消勾選，閱讀字體會更清晰！</span>
+    <button class="btn" style="background:#f59e0b; color:#fff; min-height:34px; padding:4px 10px;" onclick="this.parentElement.style.display='none'">關閉</button>
+  </div>
+
+  <header class="app-header">
+    <div class="app-title">
+      <span>🔢</span>
+      <span>點擊計數管理器</span>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnToggleTheme" title="切換深色 / 淺色模式">🌙 深色</button>
+      <div class="toolbar desktop-toolbar">
+        <button class="btn" id="btnOpenCalc" title="開啟小計算機 (支援括號優先運算)">🧮 計算機</button>
+        <button class="btn" id="btnToggleView" title="切換大圖 / 小圖顯示">🖼 大圖模式</button>
+        <button class="btn" id="btnToggleReorder" title="調整計數器順序">↕️ 排序</button>
+        <button class="btn" id="btnToggleTTS" title="點擊語音播報">🔇 語音：關</button>
+        <button class="btn" id="btnDataMenu" title="匯出 CSV、JSON 備份或 Gmail 雲端同步">💾 匯出/備份</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="counterGrid" class="counter-grid large"></div>
+  </main>
+
+  <!-- 電腦版懸浮新增按鈕 -->
+  <button class="fab" id="btnAddCounter">＋ 新增計數器</button>
+
+  <!-- 手機版底部固定導覽列 -->
+  <nav class="mobile-bottom-nav" aria-label="手機操作選單">
+    <button class="nav-item primary" onclick="openAddCounterModal()">
+      <span class="nav-icon">＋</span>
+      <span>新增</span>
+    </button>
+    <button class="nav-item" onclick="openCalcModal()">
+      <span class="nav-icon">🧮</span>
+      <span>計算機</span>
+    </button>
+    <button class="nav-item" id="navViewBtn" onclick="toggleViewFromMenu()">
+      <span class="nav-icon">🖼</span>
+      <span id="navViewLabel">大圖</span>
+    </button>
+    <button class="nav-item" id="navReorderBtn" onclick="toggleReorderFromMobile()">
+      <span class="nav-icon">↕️</span>
+      <span>排序</span>
+    </button>
+    <button class="nav-item" onclick="openModal('mobileMenuModal')">
+      <span class="nav-icon">☰</span>
+      <span>更多</span>
+    </button>
+  </nav>
+
+  <!-- 手機版更多功能底部選單 -->
+  <div class="modal-backdrop" id="mobileMenuModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ 更多功能與設定</h2>
+        <button class="icon-btn" onclick="closeModal('mobileMenuModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sheet-menu">
+          <button class="sheet-item" onclick="toggleTTSFromMenu()">
+            <span>🔊 點擊語音播報</span>
+            <span class="sheet-badge" id="mobileTTSBadge">關閉</span>
+          </button>
+          <button class="sheet-item" onclick="toggleViewFromMenu(); closeModal('mobileMenuModal');">
+            <span>🖼 切換顯示模式</span>
+            <span class="sheet-badge" id="mobileViewBadge">大圖模式</span>
+          </button>
+          <button class="sheet-item" onclick="openDataFromMenu()">
+            <span>☁️ 匯出 / 備份 / Gmail 雲端同步</span>
+            <span class="sheet-badge">開啟 ▸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增 / 編輯計數器 Modal -->
+  <div class="modal-backdrop" id="counterModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="counterModalTitle">新增計數器</h2>
+        <button class="icon-btn" onclick="closeModal('counterModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCounterId" />
+        <div class="form-group">
+          <label for="counterName">專案 / 計數器名稱</label>
+          <input type="text" id="counterName" class="form-control" placeholder="例如：每日喝水、運動次數、客流量..." />
+        </div>
+        <div class="form-group">
+          <label for="counterNote">紀錄事項 / 備註</label>
+          <textarea id="counterNote" class="form-control" rows="2" placeholder="寫下此計數器的說明或注意事項..."></textarea>
+        </div>
+        <div class="form-group" id="initialCountGroup">
+          <label for="counterInitialCount">目前計數值</label>
+          <input type="number" id="counterInitialCount" class="form-control" value="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>選擇色彩樣式</label>
+          <div class="color-palette" id="colorPalette"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('counterModal')">取消</button>
+        <button class="btn btn-primary" id="btnSaveCounter">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 歷史紀錄 & 月曆模式 Modal -->
+  <div class="modal-backdrop" id="historyModal">
+    <div class="modal wide">
+      <div class="modal-header">
+        <h2 id="historyModalTitle">歷史紀錄</h2>
+        <button class="icon-btn" onclick="closeModal('historyModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs">
+          <button class="tab-btn active" id="tabList" onclick="switchHistoryTab('list')">📋 列表模式</button>
+          <button class="tab-btn" id="tabCalendar" onclick="switchHistoryTab('calendar')">📅 月曆模式</button>
+        </div>
+
+        <div id="historyListView">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+            <span id="listFilterInfo" style="font-size:0.92rem; color:var(--text-muted);">顯示全部點擊紀錄</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" id="btnClearDateFilter" style="display:none;" onclick="clearDateFilter()">顯示全部日期</button>
+              <button class="btn" onclick="exportSingleCSV()">匯出 CSV</button>
+            </div>
+          </div>
+          <div class="log-list" id="logListContainer"></div>
+        </div>
+
+        <div id="historyCalendarView" style="display:none;">
+          <div class="cal-header">
+            <button class="btn" onclick="changeMonth(-1)">◀ 上月</button>
+            <strong id="calMonthLabel"></strong>
+            <button class="btn" onclick="changeMonth(1)">下月 ▶</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div id="calDayDetails" style="margin-top:16px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編輯單筆點擊紀錄 (時間 + 備註) Modal -->
+  <div class="modal-backdrop" id="editLogModal" style="z-index: 110;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>編輯點擊紀錄</h2>
+        <button class="icon-btn" onclick="closeModal('editLogModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editLogCounterId" />
+        <input type="hidden" id="editLogId" />
+        <div class="form-group">
+          <label for="editLogTime">紀錄時間</label>
+          <input type="datetime-local" step="1" id="editLogTime" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label for="editLogNote">備註事項</label>
+          <textarea id="editLogNote" class="form-control" rows="3" placeholder="輸入此筆點擊的備註內容..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('editLogModal')">取消</button>
+        <button class="btn btn-primary" id="btnSaveLogEdit">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 小計算機 Modal -->
+  <div class="modal-backdrop" id="calcModal">
+    <div class="modal calc-modal" id="calcModalCard">
+      <div class="modal-header">
+        <h2>🧮 小計算機 <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">(括號優先)</span></h2>
+        <button class="icon-btn" onclick="closeModal('calcModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="calc-display">
+          <div class="calc-expr" id="calcExpr">0</div>
+          <div class="calc-preview" id="calcPreview"></div>
+        </div>
+
+        <div class="calc-grid">
+          <button class="calc-btn clear" onclick="calcClear()">C</button>
+          <button class="calc-btn paren" onclick="calcInput('(')">(</button>
+          <button class="calc-btn paren" onclick="calcInput(')')">)</button>
+          <button class="calc-btn op" onclick="calcInput('÷')">÷</button>
+
+          <button class="calc-btn" onclick="calcInput('7')">7</button>
+          <button class="calc-btn" onclick="calcInput('8')">8</button>
+          <button class="calc-btn" onclick="calcInput('9')">9</button>
+          <button class="calc-btn op" onclick="calcInput('×')">×</button>
+
+          <button class="calc-btn" onclick="calcInput('4')">4</button>
+          <button class="calc-btn" onclick="calcInput('5')">5</button>
+          <button class="calc-btn" onclick="calcInput('6')">6</button>
+          <button class="calc-btn op" onclick="calcInput('−')">−</button>
+
+          <button class="calc-btn" onclick="calcInput('1')">1</button>
+          <button class="calc-btn" onclick="calcInput('2')">2</button>
+          <button class="calc-btn" onclick="calcInput('3')">3</button>
+          <button class="calc-btn op" onclick="calcInput('+')">+</button>
+
+          <button class="calc-btn" onclick="calcBackspace()" title="退格">⌫</button>
+          <button class="calc-btn" onclick="calcInput('0')">0</button>
+          <button class="calc-btn" onclick="calcInput('.')">.</button>
+          <button class="calc-btn eq" onclick="calcEquals()">=</button>
+        </div>
+
+        <div class="calc-tools">
+          <button class="btn" onclick="calcCopyResult()">📋 複製</button>
+          <select id="calcTargetCounter" class="form-control" style="flex:1; min-width:100px;"></select>
+          <button class="btn btn-primary" onclick="applyCalcToCounter()">套用</button>
+        </div>
+
+        <div class="calc-history" id="calcHistoryList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 備份 / 匯出 / Gmail Google 雲端同步 Modal -->
+  <div class="modal-backdrop" id="dataModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>匯出 / 備份與 Gmail 雲端同步</h2>
+        <button class="icon-btn" onclick="closeModal('dataModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Gmail 雲端同步區塊 -->
+        <div class="sync-card">
+          <div class="sync-header">
+            <div class="sync-title">☁️ Gmail 帳號雲端同步 (Google Drive)</div>
+            <span class="sync-status-pill" id="googleStatusPill">未登入</span>
+          </div>
+
+          <div class="sync-warning" id="googleFileProtocolWarn" style="display:none;">
+            ⚠️ 偵測到目前以本機檔案 (<code>file://</code>) 開啟。Google 安全政策不允許在 <code>file://</code> 登入，請改用本機伺服器 (<code>http://localhost</code>) 或 HTTPS 網址開啟本檔案。
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px;">
+            <label for="googleGmailInput" style="font-size:0.88rem;">Gmail 帳號（可直接輸入或留空由登入視窗選取）</label>
+            <input type="email" id="googleGmailInput" class="form-control" style="padding:9px 12px; font-size:0.95rem;" placeholder="例如：yourname@gmail.com" autocomplete="email" />
+          </div>
+
+          <div class="sync-account-box" id="googleAccountBox">
+            <div style="min-width:0; flex:1;">
+              <div id="googleAccountName" style="font-weight:700; font-size:0.95rem;">尚未登入 Gmail 帳號</div>
+              <div id="googleLastSyncText" style="font-size:0.82rem; color:var(--text-muted);">雲端備份檔：tap_counter_manager_backup.json</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="btnGoogleSignIn" onclick="signInGoogle()">使用 Gmail 登入</button>
+              <button class="btn" id="btnGoogleSwitch" style="display:none;" onclick="signInGoogle(null, true)">切換帳號</button>
+              <button class="btn" id="btnGoogleSignOut" style="display:none;" onclick="signOutGoogle()">登出</button>
+            </div>
+          </div>
+
+          <div class="sync-actions-grid">
+            <button class="btn btn-primary" id="btnGoogleUpload" onclick="uploadToGoogleDrive()">☁️ 立即上傳備份</button>
+            <button class="btn" id="btnGoogleDownload" onclick="downloadFromGoogleDrive()">⬇️ 從雲端還原</button>
+          </div>
+
+          <div class="sync-toggle-row">
+            <label for="googleAutoSyncToggle" style="font-weight:600; cursor:pointer; margin:0;">
+              🔄 資料變動時自動上傳到 Google 雲端
+            </label>
+            <input type="checkbox" id="googleAutoSyncToggle" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
+          </div>
+
+          <details class="sync-help" id="googleClientConfigDetails">
+            <summary>⚙️ 進階：網站 Google OAuth Client ID 設定（首次使用必看）</summary>
+            <div style="margin-top:8px;">
+              <label for="googleClientIdInput" style="display:block; font-size:0.84rem; font-weight:700; margin-bottom:4px;">Google OAuth Client ID（僅儲存在本機瀏覽器）</label>
+              <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <input type="text" id="googleClientIdInput" class="form-control" style="padding:8px 10px; font-size:0.86rem;" placeholder="xxxx.apps.googleusercontent.com" />
+                <button class="btn" id="btnSaveGoogleClientId" style="min-height:36px; white-space:nowrap;">儲存 ID</button>
+              </div>
+            </div>
+            <ol>
+              <li>因 Google 安全規範，網頁必須綁定一組對應該網址的 OAuth Client ID 才能透過 Gmail 存取 Google Drive。</li>
+              <li>前往 <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color:var(--primary);">Google Cloud Console</a> 建立專案並啟用 <strong>Google Drive API</strong>。</li>
+              <li>在「OAuth 同意畫面」選「外部」，將要使用的 Gmail 加入「測試使用者」。</li>
+              <li>在「憑證 → 建立憑證 → OAuth 用戶端 ID → 網頁應用程式」的「已授權的 JavaScript 來源」填入：<code id="currentOriginHint"></code></li>
+              <li>將取得的 Client ID 貼到上方欄位儲存（或直接寫入程式碼中的 <code>DEFAULT_GOOGLE_CLIENT_ID</code>），之後即可直接用 Gmail 帳號登入同步。</li>
+            </ol>
+          </details>
+        </div>
+
+        <div class="form-group">
+          <label>匯出報表 (Excel 可開啟)</label>
+          <button class="btn btn-primary" style="width:100%; min-height:48px;" onclick="exportAllCSV()">📊 匯出所有紀錄為 CSV 檔案</button>
+        </div>
+        <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;" />
+        <div class="form-group">
+          <label>本機完整資料備份 (JSON)</label>
+          <button class="btn" style="width:100%; min-height:48px;" onclick="exportJSON()">⬇️ 下載 JSON 備份檔</button>
+        </div>
+        <div class="form-group">
+          <label for="importJsonFile">從本機檔案還原 (選擇先前匯出的 JSON 檔)</label>
+          <input type="file" id="importJsonFile" accept=".json" class="form-control" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('dataModal')">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 單一全螢幕模式 -->
+  <div class="single-overlay" id="singleOverlay">
+    <div class="single-header">
+      <button class="single-header-btn" onclick="exitSingleMode()">← 返回</button>
+      <div style="display:flex; gap:8px;">
+        <button class="single-header-btn" onclick="openHistoryFromSingle()">📅 紀錄/月曆</button>
+        <button class="single-header-btn" onclick="addNoteToLastTap()">📝 幫剛剛加備註</button>
+      </div>
+    </div>
+    <div class="single-main" id="singleTapArea">
+      <div class="single-title" id="singleTitle"></div>
+      <div class="single-note" id="singleNote"></div>
+      <div class="single-count" id="singleCount">0</div>
+      <div class="single-hint">點擊畫面任意處 +1 <span class="single-hint-desktop">｜鍵盤快捷鍵：空白鍵 / ↑ / + 為 +1，↓ / - 為 -1</span></div>
+    </div>
+    <div class="single-bottom">
+      <button class="single-action-btn" onclick="tapFromSingle(-1)">－ 1</button>
+      <button class="single-action-btn primary" onclick="tapFromSingle(1)">＋ 1</button>
+      <button class="single-action-btn" onclick="resetFromSingle()">歸零</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'tap_counter_manager_web_v1';
+    const GOOGLE_CFG_KEY = 'tap_counter_google_cfg_v1';
+    const DEFAULT_GOOGLE_CLIENT_ID = ''; // 若有固定網站 Client ID，可填寫於此，使用者即可免設定直接用 Gmail 登入
+    const GOOGLE_BACKUP_FILENAME = 'tap_counter_manager_backup.json';
+    const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+
+    const COLORS = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
+      '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+      '#f97316', '#64748b'
+    ];
+
+    let state = loadState();
+    let googleCfg = loadGoogleCfg();
+    let googleTokenClient = null;
+    let googleTokenClientKey = '';
+    let googleAccessToken = null;
+    let googleTokenExpiresAt = 0;
+    let googleUserProfile = null;
+    let pendingGoogleAction = null;
+    let autoSyncTimer = null;
+    let isSyncBusy = false;
+
+    let isReorderMode = false;
+    let selectedColor = COLORS[0];
+    let currentHistoryCounterId = null;
+    let historyTab = 'list';
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+    let filterDateStr = null;
+    let singleCounterId = null;
+    let dragSrcIndex = null;
+
+    // Calculator state
+    let calcExpression = '';
+    let calcJustEvaluated = false;
+    let calcHistory = [];
+
+    function loadState() {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.counters)) {
+            if (typeof parsed.darkMode !== 'boolean') parsed.darkMode = prefersDark;
+            return parsed;
+          }
+        }
+      } catch (e) { console.error(e); }
+      return {
+        viewMode: 'large',
+        ttsEnabled: false,
+        darkMode: prefersDark,
+        counters: [
+          {
+            id: 'c_' + Date.now(),
+            name: '每日喝水紀錄',
+            note: '目標每天 8 杯水，點擊 +1 記錄每次時間',
+            color: '#3b82f6',
+            count: 0,
+            logs: []
+          }
+        ]
+      };
+    }
+
+    function loadGoogleCfg() {
+      try {
+        const raw = localStorage.getItem(GOOGLE_CFG_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            clientId: parsed.clientId || DEFAULT_GOOGLE_CLIENT_ID,
+            gmailHint: parsed.gmailHint || '',
+            autoSync: Boolean(parsed.autoSync),
+            lastSyncTime: parsed.lastSyncTime || null,
+            lastAccountEmail: parsed.lastAccountEmail || '',
+            fileId: parsed.fileId || ''
+          };
+        }
+      } catch (e) { console.error(e); }
+      return {
+        clientId: DEFAULT_GOOGLE_CLIENT_ID,
+        gmailHint: '',
+        autoSync: false,
+        lastSyncTime: null,
+        lastAccountEmail: '',
+        fileId: ''
+      };
+    }
+
+    function saveGoogleCfg() {
+      localStorage.setItem(GOOGLE_CFG_KEY, JSON.stringify(googleCfg));
+    }
+
+    function saveState(options = {}) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (!options.skipAutoSync && googleCfg.autoSync && hasValidGoogleToken()) {
+        clearTimeout(autoSyncTimer);
+        autoSyncTimer = setTimeout(() => {
+          uploadToGoogleDrive({ silent: true });
+        }, 2500);
+      }
+    }
+
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
+      const metaTheme = document.getElementById('metaThemeColor');
+      if (metaTheme) metaTheme.setAttribute('content', state.darkMode ? '#1e293b' : '#ffffff');
+
+      const btn = document.getElementById('btnToggleTheme');
+      if (btn) {
+        btn.textContent = state.darkMode ? '☀️ 淺色' : '🌙 深色';
+        btn.classList.toggle('active', state.darkMode);
+      }
+    }
+
+    function checkAndroidDesktopMode() {
+      const isTouch = navigator.maxTouchPoints > 0;
+      const smallPhysicalScreen = Math.min(window.screen.width, window.screen.height) < 600;
+      const banner = document.getElementById('desktopSiteBanner');
+      if (banner) {
+        banner.style.display = (isTouch && smallPhysicalScreen && window.innerWidth >= 850) ? 'flex' : 'none';
+      }
+    }
+
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 820px), (hover: none) and (pointer: coarse)').matches;
+    }
+
+    /* 電腦版計算機：不出現捲軸、依視窗比例自動調整合適大小 */
+    function fitCalcModal() {
+      const backdrop = document.getElementById('calcModal');
+      const card = document.getElementById('calcModalCard');
+      if (!backdrop || !card || !backdrop.classList.contains('open')) return;
+
+      if (isMobileViewport()) {
+        card.style.transform = '';
+        card.style.transformOrigin = '';
+        return;
+      }
+
+      card.style.transformOrigin = 'center center';
+      card.style.transform = 'scale(1)';
+
+      const rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const availW = Math.max(240, window.innerWidth - 32);
+      const availH = Math.max(260, window.innerHeight - 32);
+      const scale = Math.min(1, availW / rect.width, availH / rect.height);
+
+      card.style.transform = scale < 0.999 ? `scale(${scale.toFixed(4)})` : 'scale(1)';
+    }
+
+    function hapticFeedback() {
+      try {
+        if (navigator.vibrate) navigator.vibrate(12);
+      } catch (e) {}
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDateTime(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function formatTimeShort(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function formatDateKey(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function toDateTimeLocalValue(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function parseDateTimeLocalValue(val) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(val);
+      if (!m) return NaN;
+      return new Date(
+        Number(m[1]),
+        Number(m[2]) - 1,
+        Number(m[3]),
+        Number(m[4]),
+        Number(m[5]),
+        Number(m[6] || 0),
+        0
+      ).getTime();
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function speakText(text) {
+      if (!state.ttsEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(String(text));
+      utter.lang = 'zh-TW';
+      utter.rate = 1.1;
+      window.speechSynthesis.speak(utter);
+    }
+
+    /* ---------------- Gmail / Google Drive Sync ---------------- */
+    function hasValidGoogleToken() {
+      return Boolean(googleAccessToken && Date.now() < googleTokenExpiresAt - 15000);
+    }
+
+    function getEffectiveClientId() {
+      return (googleCfg.clientId || DEFAULT_GOOGLE_CLIENT_ID || '').trim();
+    }
+
+    function renderGoogleSyncUI() {
+      const isFileProto = window.location.protocol === 'file:';
+      document.getElementById('googleFileProtocolWarn').style.display = isFileProto ? 'block' : 'none';
+      document.getElementById('currentOriginHint').textContent = isFileProto
+        ? 'http://localhost:8080 (不可使用 file://)'
+        : window.location.origin;
+
+      const gmailInput = document.getElementById('googleGmailInput');
+      if (document.activeElement !== gmailInput) {
+        gmailInput.value = googleCfg.gmailHint || googleCfg.lastAccountEmail || '';
+      }
+
+      const clientIdInput = document.getElementById('googleClientIdInput');
+      if (document.activeElement !== clientIdInput) {
+        clientIdInput.value = getEffectiveClientId();
+      }
+
+      document.getElementById('googleAutoSyncToggle').checked = googleCfg.autoSync;
+
+      const pill = document.getElementById('googleStatusPill');
+      const nameEl = document.getElementById('googleAccountName');
+      const syncTextEl = document.getElementById('googleLastSyncText');
+      const btnIn = document.getElementById('btnGoogleSignIn');
+      const btnSwitch = document.getElementById('btnGoogleSwitch');
+      const btnOut = document.getElementById('btnGoogleSignOut');
+      const btnUp = document.getElementById('btnGoogleUpload');
+      const btnDown = document.getElementById('btnGoogleDownload');
+
+      const signedIn = hasValidGoogleToken();
+      pill.textContent = isSyncBusy ? '同步中...' : (signedIn ? '已登入' : '未登入');
+      pill.classList.toggle('connected', signedIn && !isSyncBusy);
+
+      if (signedIn && googleUserProfile) {
+        nameEl.textContent = `${googleUserProfile.name || 'Gmail 帳號'} (${googleUserProfile.email || ''})`;
+      } else if (signedIn) {
+        nameEl.textContent = googleCfg.lastAccountEmail || googleCfg.gmailHint || '已登入 Gmail 帳號';
+      } else if (googleCfg.lastAccountEmail) {
+        nameEl.textContent = `上次登入：${googleCfg.lastAccountEmail}（請重新登入）`;
+      } else {
+        nameEl.textContent = '尚未登入 Gmail 帳號';
+      }
+
+      syncTextEl.textContent = googleCfg.lastSyncTime
+        ? `上次同步：${formatDateTime(googleCfg.lastSyncTime)}`
+        : `雲端備份檔：${GOOGLE_BACKUP_FILENAME}`;
+
+      btnIn.style.display = signedIn ? 'none' : 'inline-flex';
+      btnSwitch.style.display = signedIn ? 'inline-flex' : 'none';
+      btnOut.style.display = signedIn ? 'inline-flex' : 'none';
+      btnUp.disabled = isSyncBusy;
+      btnDown.disabled = isSyncBusy;
+    }
+
+    function ensureGoogleTokenClient(gmailHint = '') {
+      const clientId = getEffectiveClientId();
+      if (!clientId) {
+        document.getElementById('googleClientConfigDetails').open = true;
+        showToast('請先展開下方「進階設定」填入 Google Client ID');
+        setTimeout(() => document.getElementById('googleClientIdInput').focus(), 60);
+        return null;
+      }
+      if (!window.google?.accounts?.oauth2) {
+        showToast('Google 登入元件載入失敗，請確認網路連線');
+        return null;
+      }
+
+      const key = `${clientId}|${gmailHint}`;
+      if (!googleTokenClient || googleTokenClientKey !== key) {
+        const cfg = {
+          client_id: clientId,
+          scope: GOOGLE_SCOPES,
+          callback: async (tokenResp) => {
+            if (tokenResp.error) {
+              pendingGoogleAction = null;
+              showToast('Gmail 登入授權失敗：' + (tokenResp.error_description || tokenResp.error));
+              renderGoogleSyncUI();
+              return;
+            }
+            googleAccessToken = tokenResp.access_token;
+            googleTokenExpiresAt = Date.now() + (Number(tokenResp.expires_in || 3600) * 1000);
+            await fetchGoogleUserInfo();
+            renderGoogleSyncUI();
+
+            const action = pendingGoogleAction;
+            pendingGoogleAction = null;
+            if (action === 'upload') {
+              await uploadToGoogleDrive();
+            } else if (action === 'download') {
+              await downloadFromGoogleDrive();
+            } else {
+              showToast('已成功登入 Gmail 帳號');
+            }
+          },
+          error_callback: (err) => {
+            pendingGoogleAction = null;
+            if (err?.type !== 'popup_closed') {
+              showToast('Google 登入視窗開啟失敗，請檢查彈出視窗設定');
+            }
+          }
+        };
+        if (gmailHint) cfg.hint = gmailHint;
+        googleTokenClient = window.google.accounts.oauth2.initTokenClient(cfg);
+        googleTokenClientKey = key;
+      }
+      return googleTokenClient;
+    }
+
+    async function fetchGoogleUserInfo() {
+      if (!googleAccessToken) return;
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+        if (res.ok) {
+          googleUserProfile = await res.json();
+          if (googleUserProfile.email) {
+            if (googleUserProfile.email !== googleCfg.lastAccountEmail) {
+              // 切換不同 Gmail 帳號時重置 fileId，避免讀取錯帳號的檔案
+              googleCfg.fileId = '';
+            }
+            googleCfg.lastAccountEmail = googleUserProfile.email;
+            googleCfg.gmailHint = googleUserProfile.email;
+            saveGoogleCfg();
+          }
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function signInGoogle(action = null, forceSwitch = false) {
+      if (window.location.protocol === 'file:') {
+        showToast('請透過 localhost 或 HTTPS 開啟才能登入 Gmail');
+        return;
+      }
+
+      const gmailVal = document.getElementById('googleGmailInput').value.trim();
+      if (gmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gmailVal)) {
+        showToast('請輸入正確的 Gmail 信箱格式（或留空直接選取）');
+        document.getElementById('googleGmailInput').focus();
+        return;
+      }
+
+      googleCfg.gmailHint = gmailVal;
+      saveGoogleCfg();
+
+      const inputClientId = document.getElementById('googleClientIdInput').value.trim();
+      if (inputClientId && inputClientId !== googleCfg.clientId) {
+        googleCfg.clientId = inputClientId;
+        saveGoogleCfg();
+      }
+
+      const client = ensureGoogleTokenClient(forceSwitch ? '' : gmailVal);
+      if (!client) return;
+
+      pendingGoogleAction = action;
+      const reqOpts = {};
+      if (forceSwitch || !gmailVal) {
+        reqOpts.prompt = 'select_account';
+      } else {
+        reqOpts.hint = gmailVal;
+      }
+      client.requestAccessToken(reqOpts);
+    }
+
+    function signOutGoogle() {
+      const token = googleAccessToken;
+      googleAccessToken = null;
+      googleTokenExpiresAt = 0;
+      googleUserProfile = null;
+      pendingGoogleAction = null;
+      clearTimeout(autoSyncTimer);
+      if (token && window.google?.accounts?.oauth2?.revoke) {
+        window.google.accounts.oauth2.revoke(token, () => {});
+      }
+      renderGoogleSyncUI();
+      showToast('已登出 Gmail 帳號');
+    }
+
+    async function findDriveBackupFile() {
+      if (googleCfg.fileId) {
+        const checkRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(googleCfg.fileId)}?fields=id,name,trashed,modifiedTime`,
+          { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+        );
+        if (checkRes.ok) {
+          const meta = await checkRes.json();
+          if (!meta.trashed) return meta;
+        }
+        googleCfg.fileId = '';
+        saveGoogleCfg();
+      }
+
+      const q = encodeURIComponent(`name='${GOOGLE_BACKUP_FILENAME}' and trashed=false`);
+      const listRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime)`,
+        { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+      );
+      if (!listRes.ok) {
+        if (listRes.status === 401) throw new Error('AUTH_EXPIRED');
+        throw new Error('查詢雲端檔案失敗');
+      }
+      const data = await listRes.json();
+      if (data.files && data.files.length > 0) {
+        googleCfg.fileId = data.files[0].id;
+        saveGoogleCfg();
+        return data.files[0];
+      }
+      return null;
+    }
+
+    async function uploadToGoogleDrive(options = {}) {
+      const { silent = false } = options;
+      if (!hasValidGoogleToken()) {
+        if (!silent) signInGoogle('upload');
+        return;
+      }
+      if (isSyncBusy) return;
+
+      isSyncBusy = true;
+      renderGoogleSyncUI();
+
+      try {
+        const existing = await findDriveBackupFile();
+        const boundary = 'tap_counter_sync_' + Date.now();
+        const metadata = {
+          name: GOOGLE_BACKUP_FILENAME,
+          mimeType: 'application/json'
+        };
+        const payload = JSON.stringify(state, null, 2);
+
+        const body =
+          `--${boundary}\r\n` +
+          `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+          `${JSON.stringify(metadata)}\r\n` +
+          `--${boundary}\r\n` +
+          `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+          `${payload}\r\n` +
+          `--${boundary}--`;
+
+        const url = existing
+          ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existing.id)}?uploadType=multipart&fields=id,name,modifiedTime`
+          : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime`;
+
+        const res = await fetch(url, {
+          method: existing ? 'PATCH' : 'POST',
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body
+        });
+
+        if (res.status === 401) throw new Error('AUTH_EXPIRED');
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `HTTP ${res.status}`);
+        }
+
+        const savedMeta = await res.json();
+        googleCfg.fileId = savedMeta.id;
+        googleCfg.lastSyncTime = Date.now();
+        saveGoogleCfg();
+        if (!silent) showToast('☁️ 已備份至 Google 雲端硬碟');
+      } catch (err) {
+        console.error(err);
+        if (err.message === 'AUTH_EXPIRED') {
+          googleAccessToken = null;
+          if (!silent) {
+            showToast('登入已過期，請重新驗證 Gmail');
+            signInGoogle('upload');
+          }
+        } else if (!silent) {
+          showToast('Google 備份失敗：' + err.message);
+        }
+      } finally {
+        isSyncBusy = false;
+        renderGoogleSyncUI();
+      }
+    }
+
+    async function downloadFromGoogleDrive() {
+      if (!hasValidGoogleToken()) {
+        signInGoogle('download');
+        return;
+      }
+      if (isSyncBusy) return;
+
+      isSyncBusy = true;
+      renderGoogleSyncUI();
+
+      try {
+        const fileMeta = await findDriveBackupFile();
+        if (!fileMeta) {
+          showToast('此 Gmail 的 Google 雲端硬碟尚無備份檔案');
+          return;
+        }
+
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileMeta.id)}?alt=media`,
+          { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+        );
+        if (res.status === 401) throw new Error('AUTH_EXPIRED');
+        if (!res.ok) throw new Error(`下載失敗 (HTTP ${res.status})`);
+
+        const parsed = await res.json();
+        if (!Array.isArray(parsed.counters)) {
+          throw new Error('雲端備份格式不正確');
+        }
+
+        const modifiedStr = fileMeta.modifiedTime ? formatDateTime(new Date(fileMeta.modifiedTime).getTime()) : '未知';
+        if (confirm(`找到 Google 雲端備份檔！\n\n帳號：${googleUserProfile?.email || googleCfg.lastAccountEmail || '目前 Gmail'}\n雲端更新時間：${modifiedStr}\n包含計數器數量：${parsed.counters.length} 個\n\n確定要覆蓋目前本機資料並還原嗎？`)) {
+          if (typeof parsed.darkMode !== 'boolean') parsed.darkMode = state.darkMode;
+          state = parsed;
+          saveState({ skipAutoSync: true });
+          googleCfg.lastSyncTime = Date.now();
+          saveGoogleCfg();
+          render();
+          closeModal('dataModal');
+          showToast('☁️ 已從 Google 雲端還原資料');
+        }
+      } catch (err) {
+        console.error(err);
+        if (err.message === 'AUTH_EXPIRED') {
+          googleAccessToken = null;
+          showToast('登入已過期，請重新驗證 Gmail');
+          signInGoogle('download');
+        } else {
+          showToast('雲端還原失敗：' + err.message);
+        }
+      } finally {
+        isSyncBusy = false;
+        renderGoogleSyncUI();
+      }
+    }
+
+    document.getElementById('btnSaveGoogleClientId').addEventListener('click', () => {
+      const val = document.getElementById('googleClientIdInput').value.trim();
+      googleCfg.clientId = val;
+      saveGoogleCfg();
+      googleTokenClient = null;
+      googleTokenClientKey = '';
+      renderGoogleSyncUI();
+      showToast(val ? '已儲存 Google Client ID，可點擊「使用 Gmail 登入」' : '已清除 Google Client ID');
+    });
+
+    document.getElementById('googleAutoSyncToggle').addEventListener('change', (e) => {
+      googleCfg.autoSync = e.target.checked;
+      saveGoogleCfg();
+      if (googleCfg.autoSync && !hasValidGoogleToken()) {
+        showToast('已開啟自動同步（請先登入 Gmail 帳號）');
+      } else {
+        showToast(googleCfg.autoSync ? '已開啟變動自動同步' : '已關閉自動同步');
+      }
+    });
+
+    /* Render Main Grid & Sync Controls */
+    function render() {
+      applyTheme();
+      const grid = document.getElementById('counterGrid');
+      grid.className = `counter-grid ${state.viewMode} ${isReorderMode ? 'reorder-active' : ''}`;
+
+      // Desktop toolbar sync
+      document.getElementById('btnToggleView').textContent = state.viewMode === 'large' ? '🖼 大圖模式' : '📋 小圖模式';
+      document.getElementById('btnToggleReorder').classList.toggle('active', isReorderMode);
+      document.getElementById('btnToggleTTS').textContent = state.ttsEnabled ? '🔊 語音：開' : '🔇 語音：關';
+      document.getElementById('btnToggleTTS').classList.toggle('active', state.ttsEnabled);
+
+      // Mobile bottom nav & sheet menu sync
+      document.getElementById('navViewLabel').textContent = state.viewMode === 'large' ? '大圖' : '小圖';
+      document.getElementById('navReorderBtn').classList.toggle('active', isReorderMode);
+      document.getElementById('mobileViewBadge').textContent = state.viewMode === 'large' ? '大圖模式' : '小圖模式';
+      document.getElementById('mobileTTSBadge').textContent = state.ttsEnabled ? '開啟' : '關閉';
+
+      if (state.counters.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <p style="font-size:1.15rem; margin-bottom:14px;">目前沒有任何計數器</p>
+            <button class="btn btn-primary" style="min-height:46px; font-size:1rem;" onclick="openAddCounterModal()">＋ 建立第一個計數器</button>
+          </div>`;
+        return;
+      }
+
+      const todayKey = formatDateKey(Date.now());
+
+      grid.innerHTML = state.counters.map((c, idx) => {
+        const todayTaps = c.logs
+          .filter(l => formatDateKey(l.timestamp) === todayKey)
+          .reduce((sum, l) => sum + l.delta, 0);
+        const lastLog = c.logs.length > 0 ? formatTimeShort(c.logs[0].timestamp) : '尚無';
+
+        return `
+          <div class="card" style="--accent:${c.color}" draggable="${isReorderMode}" data-index="${idx}">
+            <div class="card-body">
+              <div class="card-top">
+                <div class="card-title-wrap">
+                  <h3 class="card-title">${escapeHtml(c.name)}</h3>
+                  ${c.note ? `<div class="card-note">${escapeHtml(c.note)}</div>` : ''}
+                </div>
+                <div class="card-actions-mini">
+                  <span class="reorder-controls">
+                    <button class="icon-btn" onclick="moveCounter(${idx}, -1)" title="上移" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>▲</button>
+                    <button class="icon-btn" onclick="moveCounter(${idx}, 1)" title="下移" ${idx === state.counters.length - 1 ? 'disabled style="opacity:0.3"' : ''}>▼</button>
+                  </span>
+                  <button class="icon-btn" onclick="enterSingleMode('${c.id}')" title="單一全螢幕模式">⛶</button>
+                  <button class="icon-btn" onclick="openEditCounterModal('${c.id}')" title="編輯設定與顏色">✎</button>
+                </div>
+              </div>
+
+              <div class="stats-row">
+                <span class="stat-pill">今日 ${todayTaps >= 0 ? '+' + todayTaps : todayTaps}</span>
+                <span class="stat-pill">紀錄 ${c.logs.length} 筆</span>
+                <span class="stat-pill">最近 ${lastLog}</span>
+              </div>
+
+              <div class="count-display-box">
+                <button class="tap-btn minus" onclick="tapCounter('${c.id}', -1)" title="-1">－</button>
+                <div class="count-number">${c.count}</div>
+                <button class="tap-btn plus" onclick="tapCounter('${c.id}', 1)" title="+1">＋</button>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <button class="btn" onclick="openHistoryModal('${c.id}')">📅 紀錄 / 月曆</button>
+              <button class="btn" onclick="resetCounter('${c.id}')">↺ 歸零</button>
+              <button class="btn btn-danger" onclick="deleteCounter('${c.id}')" title="刪除">🗑</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (isReorderMode) bindDragEvents();
+    }
+
+    /* Tap Logic */
+    function tapCounter(id, delta) {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      hapticFeedback();
+      c.count += delta;
+      c.logs.unshift({
+        id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        timestamp: Date.now(),
+        delta: delta,
+        note: ''
+      });
+      saveState();
+      render();
+      if (singleCounterId === id) renderSingleMode();
+      speakText(c.count);
+    }
+
+    function resetCounter(id) {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      const choice = confirm(`確定要重置「${c.name}」的計數嗎？\n\n按「確定」將計數歸零（歷史點擊時間紀錄仍會保留）。`);
+      if (!choice) return;
+      c.count = 0;
+      saveState();
+      render();
+      if (singleCounterId === id) renderSingleMode();
+      showToast('計數器已歸零');
+    }
+
+    function deleteCounter(id) {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      if (!confirm(`確定要刪除「${c.name}」及其所有歷史紀錄嗎？此動作無法復原。`)) return;
+      state.counters = state.counters.filter(x => x.id !== id);
+      saveState();
+      render();
+      showToast('已刪除計數器');
+    }
+
+    /* Reorder */
+    function moveCounter(index, dir) {
+      const target = index + dir;
+      if (target < 0 || target >= state.counters.length) return;
+      const temp = state.counters[index];
+      state.counters[index] = state.counters[target];
+      state.counters[target] = temp;
+      saveState();
+      render();
+    }
+
+    function bindDragEvents() {
+      const cards = document.querySelectorAll('#counterGrid .card');
+      cards.forEach(card => {
+        card.addEventListener('dragstart', e => {
+          dragSrcIndex = Number(card.dataset.index);
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragover', e => e.preventDefault());
+        card.addEventListener('drop', e => {
+          e.preventDefault();
+          const targetIndex = Number(card.dataset.index);
+          if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+            const [moved] = state.counters.splice(dragSrcIndex, 1);
+            state.counters.splice(targetIndex, 0, moved);
+            saveState();
+            render();
+          }
+        });
+      });
+    }
+
+    /* Mobile Menu & Nav Actions */
+    function toggleViewFromMenu() {
+      state.viewMode = state.viewMode === 'large' ? 'small' : 'large';
+      saveState();
+      render();
+      showToast(state.viewMode === 'large' ? '已切換為大圖模式' : '已切換為小圖模式');
+    }
+
+    function toggleReorderFromMobile() {
+      isReorderMode = !isReorderMode;
+      render();
+      if (isReorderMode) showToast('請點卡片右上角 ▲ ▼ 調整順序');
+      else showToast('已完成排序');
+    }
+
+    function toggleTTSFromMenu() {
+      state.ttsEnabled = !state.ttsEnabled;
+      saveState();
+      render();
+      if (state.ttsEnabled) speakText('語音播報已開啟');
+      showToast(state.ttsEnabled ? '語音播報已開啟' : '語音播報已關閉');
+    }
+
+    function openDataFromMenu() {
+      closeModal('mobileMenuModal');
+      openDataModal();
+    }
+
+    function openDataModal() {
+      renderGoogleSyncUI();
+      openModal('dataModal');
+    }
+
+    /* Add / Edit Modal */
+    function renderColorPalette() {
+      const el = document.getElementById('colorPalette');
+      el.innerHTML = COLORS.map(color => `
+        <div class="color-swatch ${color === selectedColor ? 'selected' : ''}"
+             style="background:${color};"
+             onclick="selectColor('${color}')"></div>
+      `).join('');
+    }
+
+    function selectColor(color) {
+      selectedColor = color;
+      renderColorPalette();
+    }
+
+    function openAddCounterModal() {
+      document.getElementById('counterModalTitle').textContent = '新增計數器';
+      document.getElementById('editCounterId').value = '';
+      document.getElementById('counterName').value = '';
+      document.getElementById('counterNote').value = '';
+      document.getElementById('counterInitialCount').value = '0';
+      selectedColor = COLORS[state.counters.length % COLORS.length];
+      renderColorPalette();
+      openModal('counterModal');
+    }
+
+    function openEditCounterModal(id) {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      document.getElementById('counterModalTitle').textContent = '編輯計數器';
+      document.getElementById('editCounterId').value = c.id;
+      document.getElementById('counterName').value = c.name;
+      document.getElementById('counterNote').value = c.note || '';
+      document.getElementById('counterInitialCount').value = c.count;
+      selectedColor = c.color || COLORS[0];
+      renderColorPalette();
+      openModal('counterModal');
+    }
+
+    document.getElementById('btnSaveCounter').addEventListener('click', () => {
+      const id = document.getElementById('editCounterId').value;
+      const name = document.getElementById('counterName').value.trim() || '未命名計數器';
+      const note = document.getElementById('counterNote').value.trim();
+      const countVal = parseInt(document.getElementById('counterInitialCount').value, 10) || 0;
+
+      if (id) {
+        const c = state.counters.find(x => x.id === id);
+        if (c) {
+          c.name = name;
+          c.note = note;
+          c.count = countVal;
+          c.color = selectedColor;
+        }
+        showToast('已更新計數器');
+      } else {
+        state.counters.push({
+          id: 'c_' + Date.now(),
+          name,
+          note,
+          color: selectedColor,
+          count: countVal,
+          logs: []
+        });
+        showToast('已新增計數器');
+      }
+      saveState();
+      render();
+      closeModal('counterModal');
+    });
+
+    /* History & Calendar Modal */
+    function openHistoryModal(id) {
+      const c = state.counters.find(x => x.id === id);
+      if (!c) return;
+      currentHistoryCounterId = id;
+      filterDateStr = null;
+      const now = new Date();
+      calYear = now.getFullYear();
+      calMonth = now.getMonth();
+      document.getElementById('historyModalTitle').textContent = `${c.name} — 紀錄`;
+      switchHistoryTab('list');
+      openModal('historyModal');
+    }
+
+    function switchHistoryTab(tab) {
+      historyTab = tab;
+      document.getElementById('tabList').classList.toggle('active', tab === 'list');
+      document.getElementById('tabCalendar').classList.toggle('active', tab === 'calendar');
+      document.getElementById('historyListView').style.display = tab === 'list' ? 'block' : 'none';
+      document.getElementById('historyCalendarView').style.display = tab === 'calendar' ? 'block' : 'none';
+      if (tab === 'list') renderHistoryList();
+      else renderCalendar();
+    }
+
+    function clearDateFilter() {
+      filterDateStr = null;
+      renderHistoryList();
+    }
+
+    function renderHistoryList() {
+      const c = state.counters.find(x => x.id === currentHistoryCounterId);
+      if (!c) return;
+
+      const filterInfo = document.getElementById('listFilterInfo');
+      const clearBtn = document.getElementById('btnClearDateFilter');
+      let logs = c.logs;
+
+      if (filterDateStr) {
+        logs = logs.filter(l => formatDateKey(l.timestamp) === filterDateStr);
+        filterInfo.textContent = `篩選日期：${filterDateStr}（共 ${logs.length} 筆）`;
+        clearBtn.style.display = 'inline-flex';
+      } else {
+        filterInfo.textContent = `全部點擊紀錄（共 ${logs.length} 筆）`;
+        clearBtn.style.display = 'none';
+      }
+
+      const container = document.getElementById('logListContainer');
+      if (logs.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:32px; color:var(--text-muted); font-size:1rem;">尚無點擊紀錄</div>`;
+        return;
+      }
+
+      container.innerHTML = logs.map(l => `
+        <div class="log-item">
+          <div class="log-main">
+            <div class="log-meta">
+              <span class="log-badge ${l.delta >= 0 ? 'plus' : 'minus'}">${l.delta >= 0 ? '+' + l.delta : l.delta}</span>
+              <span class="log-time">${formatDateTime(l.timestamp)}</span>
+            </div>
+            ${l.note ? `<div class="log-note-text">📝 ${escapeHtml(l.note)}</div>` : ''}
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'time')" title="編輯此筆時間">🕒</button>
+            <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'note')" title="編輯此筆備註">📝</button>
+            <button class="icon-btn" onclick="deleteLog('${c.id}', '${l.id}')" title="刪除此筆紀錄">🗑</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openEditLogModal(counterId, logId, focusField = 'time') {
+      const c = state.counters.find(x => x.id === counterId);
+      if (!c) return;
+      const log = c.logs.find(l => l.id === logId);
+      if (!log) return;
+
+      document.getElementById('editLogCounterId').value = counterId;
+      document.getElementById('editLogId').value = logId;
+      document.getElementById('editLogTime').value = toDateTimeLocalValue(log.timestamp);
+      document.getElementById('editLogNote').value = log.note || '';
+
+      openModal('editLogModal');
+
+      setTimeout(() => {
+        const target = document.getElementById(focusField === 'note' ? 'editLogNote' : 'editLogTime');
+        if (target) target.focus();
+      }, 60);
+    }
+
+    document.getElementById('btnSaveLogEdit').addEventListener('click', () => {
+      const counterId = document.getElementById('editLogCounterId').value;
+      const logId = document.getElementById('editLogId').value;
+      const timeStr = document.getElementById('editLogTime').value;
+      const noteStr = document.getElementById('editLogNote').value.trim();
+
+      const c = state.counters.find(x => x.id === counterId);
+      if (!c) return;
+      const log = c.logs.find(l => l.id === logId);
+      if (!log) return;
+
+      const parsedTs = parseDateTimeLocalValue(timeStr);
+      if (!Number.isFinite(parsedTs)) {
+        showToast('請輸入有效的日期與時間');
+        return;
+      }
+
+      log.timestamp = parsedTs;
+      log.note = noteStr;
+      c.logs.sort((a, b) => b.timestamp - a.timestamp);
+
+      saveState();
+      render();
+      if (document.getElementById('historyModal').classList.contains('open')) {
+        if (historyTab === 'list') renderHistoryList();
+        else renderCalendar();
+      }
+      closeModal('editLogModal');
+      showToast('已更新點擊紀錄');
+    });
+
+    function deleteLog(counterId, logId) {
+      const c = state.counters.find(x => x.id === counterId);
+      if (!c) return;
+      const idx = c.logs.findIndex(l => l.id === logId);
+      if (idx === -1) return;
+      if (!confirm('刪除此筆時間紀錄（也會同步扣回計數值）？')) return;
+      const [removed] = c.logs.splice(idx, 1);
+      c.count -= removed.delta;
+      saveState();
+      render();
+      if (historyTab === 'list') renderHistoryList();
+      else renderCalendar();
+    }
+
+    /* Calendar Mode */
+    function changeMonth(offset) {
+      calMonth += offset;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const c = state.counters.find(x => x.id === currentHistoryCounterId);
+      if (!c) return;
+
+      document.getElementById('calMonthLabel').textContent = `${calYear} 年 ${calMonth + 1} 月`;
+
+      const dailyMap = {};
+      c.logs.forEach(l => {
+        const key = formatDateKey(l.timestamp);
+        if (!dailyMap[key]) dailyMap[key] = { net: 0, count: 0 };
+        dailyMap[key].net += l.delta;
+        dailyMap[key].count += 1;
+      });
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const todayKey = formatDateKey(Date.now());
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+
+      let html = weekdays.map(w => `<div class="cal-weekday">${w}</div>`).join('');
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div class="cal-day empty"></div>`;
+      }
+
+      const pad = n => String(n).padStart(2, '0');
+      for (let day = 1; day <= daysInMonth; day++) {
+        const key = `${calYear}-${pad(calMonth + 1)}-${pad(day)}`;
+        const info = dailyMap[key];
+        const isToday = key === todayKey;
+        const isSelected = key === filterDateStr;
+
+        html += `
+          <div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDay('${key}')">
+            <span class="cal-day-num">${day}</span>
+            ${info ? `<span class="cal-day-count" style="background:${c.color};">${info.net}</span>` : '<span></span>'}
+          </div>
+        `;
+      }
+
+      document.getElementById('calGrid').innerHTML = html;
+      renderCalendarDayDetails(filterDateStr || todayKey);
+    }
+
+    function selectCalendarDay(dateKey) {
+      filterDateStr = dateKey;
+      renderCalendar();
+    }
+
+    function renderCalendarDayDetails(dateKey) {
+      const c = state.counters.find(x => x.id === currentHistoryCounterId);
+      if (!c) return;
+      const dayLogs = c.logs.filter(l => formatDateKey(l.timestamp) === dateKey);
+      const total = dayLogs.reduce((s, l) => s + l.delta, 0);
+      const container = document.getElementById('calDayDetails');
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <strong style="font-size:0.98rem;">${dateKey} 明細（當日合計：${total}，共 ${dayLogs.length} 筆）</strong>
+        </div>
+        ${dayLogs.length === 0
+          ? `<div style="color:var(--text-muted); font-size:0.95rem;">這天沒有點擊紀錄</div>`
+          : `<div class="log-list">${dayLogs.map(l => `
+              <div class="log-item">
+                <div class="log-main">
+                  <div class="log-meta">
+                    <span class="log-badge ${l.delta >= 0 ? 'plus' : 'minus'}">${l.delta >= 0 ? '+' + l.delta : l.delta}</span>
+                    <span class="log-time">${formatDateTime(l.timestamp)}</span>
+                  </div>
+                  ${l.note ? `<div class="log-note-text">📝 ${escapeHtml(l.note)}</div>` : ''}
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'time')" title="編輯時間">🕒</button>
+                  <button class="icon-btn" onclick="openEditLogModal('${c.id}', '${l.id}', 'note')" title="編輯備註">📝</button>
+                </div>
+              </div>
+            `).join('')}</div>`
+        }
+      `;
+    }
+
+    /* Mini Calculator with Parentheses Precedence */
+    function evaluateExpression(expr) {
+      const clean = expr
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/\s+/g, '');
+      if (!clean) return null;
+
+      const tokens = [];
+      let i = 0;
+      while (i < clean.length) {
+        const ch = clean[i];
+        if ((ch >= '0' && ch <= '9') || ch === '.') {
+          let numStr = '';
+          let dotCount = 0;
+          while (i < clean.length && ((clean[i] >= '0' && clean[i] <= '9') || clean[i] === '.')) {
+            if (clean[i] === '.') dotCount++;
+            if (dotCount > 1) throw new Error('小數點格式錯誤');
+            numStr += clean[i++];
+          }
+          if (numStr === '.') throw new Error('數字格式錯誤');
+          tokens.push({ type: 'num', value: parseFloat(numStr) });
+        } else if ('+-*/()'.includes(ch)) {
+          tokens.push({ type: 'op', value: ch });
+          i++;
+        } else {
+          throw new Error('包含不支援的字元');
+        }
+      }
+
+      const finalTokens = [];
+      for (let j = 0; j < tokens.length; j++) {
+        const curr = tokens[j];
+        const prev = finalTokens[finalTokens.length - 1];
+        if (prev) {
+          const prevIsVal = prev.type === 'num' || (prev.type === 'op' && prev.value === ')');
+          const currIsParenOpen = curr.type === 'op' && curr.value === '(';
+          const prevIsParenCloseAndCurrIsNum = (prev.type === 'op' && prev.value === ')') && curr.type === 'num';
+          if ((prevIsVal && currIsParenOpen) || prevIsParenCloseAndCurrIsNum) {
+            finalTokens.push({ type: 'op', value: '*' });
+          }
+        }
+        finalTokens.push(curr);
+      }
+
+      let pos = 0;
+      const peek = () => finalTokens[pos];
+      const consume = () => finalTokens[pos++];
+
+      function parseExpr() {
+        let left = parseTerm();
+        while (peek() && peek().type === 'op' && (peek().value === '+' || peek().value === '-')) {
+          const op = consume().value;
+          const right = parseTerm();
+          left = op === '+' ? left + right : left - right;
+        }
+        return left;
+      }
+
+      function parseTerm() {
+        let left = parseFactor();
+        while (peek() && peek().type === 'op' && (peek().value === '*' || peek().value === '/')) {
+          const op = consume().value;
+          const right = parseFactor();
+          if (op === '/') {
+            if (right === 0) throw new Error('不可除以 0');
+            left = left / right;
+          } else {
+            left = left * right;
+          }
+        }
+        return left;
+      }
+
+      function parseFactor() {
+        const tok = peek();
+        if (!tok) throw new Error('算式不完整');
+        if (tok.type === 'op' && (tok.value === '+' || tok.value === '-')) {
+          consume();
+          const val = parseFactor();
+          return tok.value === '-' ? -val : val;
+        }
+        if (tok.type === 'op' && tok.value === '(') {
+          consume();
+          const val = parseExpr();
+          const closing = peek();
+          if (!closing || closing.type !== 'op' || closing.value !== ')') {
+            throw new Error('缺少右括號 )');
+          }
+          consume();
+          return val;
+        }
+        if (tok.type === 'num') {
+          consume();
+          return tok.value;
+        }
+        throw new Error('算式語法錯誤');
+      }
+
+      const result = parseExpr();
+      if (pos < finalTokens.length) {
+        if (finalTokens[pos].value === ')') throw new Error('多餘的右括號 )');
+        throw new Error('算式語法錯誤');
+      }
+      if (!Number.isFinite(result)) throw new Error('數值超出範圍');
+      return Math.round(result * 1e12) / 1e12;
+    }
+
+    function openCalcModal() {
+      const sel = document.getElementById('calcTargetCounter');
+      if (state.counters.length === 0) {
+        sel.innerHTML = `<option value="">無計數器</option>`;
+      } else {
+        sel.innerHTML = state.counters.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${c.count})</option>`).join('');
+      }
+      openModal('calcModal');
+      renderCalc();
+    }
+
+    function renderCalc() {
+      const exprEl = document.getElementById('calcExpr');
+      const prevEl = document.getElementById('calcPreview');
+      exprEl.textContent = calcExpression || '0';
+      prevEl.classList.remove('error');
+
+      if (!calcExpression) {
+        prevEl.textContent = '';
+      } else {
+        try {
+          const val = evaluateExpression(calcExpression);
+          prevEl.textContent = val !== null ? `= ${val}` : '';
+        } catch (err) {
+          prevEl.textContent = '';
+        }
+      }
+
+      const histEl = document.getElementById('calcHistoryList');
+      if (calcHistory.length === 0) {
+        histEl.innerHTML = `<div style="font-size:0.84rem; color:var(--text-muted); text-align:center;">尚無計算紀錄（括號內的數字會優先運算）</div>`;
+      } else {
+        histEl.innerHTML = calcHistory.map((item, idx) => `
+          <div class="calc-history-item" onclick="reuseCalcHistory(${idx})" title="點擊帶回此結果">
+            <span style="color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(item.expr)}</span>
+            <strong>= ${item.result}</strong>
+          </div>
+        `).join('');
+      }
+
+      requestAnimationFrame(fitCalcModal);
+    }
+
+    function calcInput(ch) {
+      hapticFeedback();
+      const isOperator = ['+', '−', '×', '÷'].includes(ch);
+      if (calcJustEvaluated) {
+        if (isOperator) {
+          calcJustEvaluated = false;
+        } else if (ch === '(') {
+          calcExpression = '(';
+          calcJustEvaluated = false;
+          renderCalc();
+          return;
+        } else {
+          calcExpression = '';
+          calcJustEvaluated = false;
+        }
+      }
+
+      const last = calcExpression.slice(-1);
+      if (['+', '×', '÷'].includes(ch) && ['+', '−', '×', '÷'].includes(last)) {
+        calcExpression = calcExpression.slice(0, -1) + ch;
+      } else if (ch === '−' && last === '−') {
+        return;
+      } else {
+        calcExpression += ch;
+      }
+      renderCalc();
+    }
+
+    function calcClear() {
+      hapticFeedback();
+      calcExpression = '';
+      calcJustEvaluated = false;
+      renderCalc();
+    }
+
+    function calcBackspace() {
+      hapticFeedback();
+      calcJustEvaluated = false;
+      calcExpression = calcExpression.slice(0, -1);
+      renderCalc();
+    }
+
+    function calcEquals() {
+      hapticFeedback();
+      if (!calcExpression) return;
+      const prevEl = document.getElementById('calcPreview');
+      try {
+        const res = evaluateExpression(calcExpression);
+        if (res === null) return;
+        calcHistory.unshift({ expr: calcExpression, result: res });
+        if (calcHistory.length > 10) calcHistory.pop();
+        calcExpression = String(res).replace(/-/g, '−');
+        calcJustEvaluated = true;
+        renderCalc();
+      } catch (err) {
+        prevEl.classList.add('error');
+        prevEl.textContent = err.message || '算式錯誤';
+        requestAnimationFrame(fitCalcModal);
+      }
+    }
+
+    function reuseCalcHistory(idx) {
+      const item = calcHistory[idx];
+      if (!item) return;
+      calcExpression = String(item.result).replace(/-/g, '−');
+      calcJustEvaluated = false;
+      renderCalc();
+    }
+
+    function getCalcCurrentValue() {
+      if (!calcExpression) return null;
+      return evaluateExpression(calcExpression);
+    }
+
+    function calcCopyResult() {
+      try {
+        const val = getCalcCurrentValue();
+        if (val === null) return showToast('目前沒有可複製的數值');
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(String(val));
+        }
+        showToast(`已複製結果：${val}`);
+      } catch (err) {
+        showToast(err.message || '請先完成有效算式');
+      }
+    }
+
+    function applyCalcToCounter() {
+      const targetId = document.getElementById('calcTargetCounter').value;
+      if (!targetId) return showToast('請先建立計數器');
+      try {
+        const val = getCalcCurrentValue();
+        if (val === null) return showToast('請先輸入算式');
+        const rounded = Math.round(val);
+        const c = state.counters.find(x => x.id === targetId);
+        if (!c) return;
+        const delta = rounded - c.count;
+        c.count = rounded;
+        if (delta !== 0) {
+          c.logs.unshift({
+            id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            timestamp: Date.now(),
+            delta: delta,
+            note: `計算機套用：${calcExpression} = ${val}`
+          });
+        }
+        saveState();
+        render();
+        openCalcModal();
+        showToast(`已將「${c.name}」設為 ${rounded}`);
+      } catch (err) {
+        showToast(err.message || '算式尚未完成');
+      }
+    }
+
+    /* Single Fullscreen Mode */
+    function enterSingleMode(id) {
+      singleCounterId = id;
+      renderSingleMode();
+      document.getElementById('singleOverlay').classList.add('open');
+    }
+
+    function exitSingleMode() {
+      singleCounterId = null;
+      document.getElementById('singleOverlay').classList.remove('open');
+    }
+
+    function renderSingleMode() {
+      const c = state.counters.find(x => x.id === singleCounterId);
+      if (!c) return exitSingleMode();
+      const overlay = document.getElementById('singleOverlay');
+      overlay.style.setProperty('--accent', c.color);
+      document.getElementById('singleTitle').textContent = c.name;
+      document.getElementById('singleNote').textContent = c.note || '';
+      document.getElementById('singleCount').textContent = c.count;
+    }
+
+    function tapFromSingle(delta) {
+      if (singleCounterId) tapCounter(singleCounterId, delta);
+    }
+
+    function resetFromSingle() {
+      if (singleCounterId) resetCounter(singleCounterId);
+    }
+
+    function openHistoryFromSingle() {
+      if (singleCounterId) openHistoryModal(singleCounterId);
+    }
+
+    function addNoteToLastTap() {
+      const c = state.counters.find(x => x.id === singleCounterId);
+      if (!c || c.logs.length === 0) return showToast('尚無點擊紀錄可加備註');
+      openEditLogModal(c.id, c.logs[0].id, 'note');
+    }
+
+    document.getElementById('singleTapArea').addEventListener('click', () => tapFromSingle(1));
+
+    /* Export / Import */
+    function downloadFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvEscape(val) {
+      const str = String(val ?? '').replace(/"/g, '""');
+      return `"${str}"`;
+    }
+
+    function buildCSV(counters) {
+      const header = ['計數器名稱', '計數器備註', '目前總數', '點擊時間', '變動值', '單次點擊備註'];
+      const rows = [header.map(csvEscape).join(',')];
+      counters.forEach(c => {
+        if (c.logs.length === 0) {
+          rows.push([c.name, c.note, c.count, '', '', ''].map(csvEscape).join(','));
+        } else {
+          c.logs.forEach(l => {
+            rows.push([
+              c.name, c.note, c.count,
+              formatDateTime(l.timestamp),
+              l.delta >= 0 ? '+' + l.delta : l.delta,
+              l.note || ''
+            ].map(csvEscape).join(','));
+          });
+        }
+      });
+      return '\uFEFF' + rows.join('\r\n');
+    }
+
+    function exportSingleCSV() {
+      const c = state.counters.find(x => x.id === currentHistoryCounterId);
+      if (!c) return;
+      downloadFile(`${c.name}_紀錄.csv`, buildCSV([c]), 'text/csv;charset=utf-8;');
+      showToast('已匯出 CSV 檔案');
+    }
+
+    function exportAllCSV() {
+      downloadFile(`點擊計數管理器_全部紀錄_${formatDateKey(Date.now())}.csv`, buildCSV(state.counters), 'text/csv;charset=utf-8;');
+      showToast('已匯出全部 CSV');
+    }
+
+    function exportJSON() {
+      downloadFile(`tap_counter_backup_${formatDateKey(Date.now())}.json`, JSON.stringify(state, null, 2), 'application/json');
+      showToast('已下載 JSON 備份');
+    }
+
+    document.getElementById('importJsonFile').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!Array.isArray(parsed.counters)) throw new Error('格式不正確');
+          if (confirm(`確定要匯入備份檔嗎？（包含 ${parsed.counters.length} 個計數器，將會覆蓋目前資料）`)) {
+            if (typeof parsed.darkMode !== 'boolean') parsed.darkMode = state.darkMode;
+            state = parsed;
+            saveState();
+            render();
+            closeModal('dataModal');
+            showToast('資料還原成功');
+          }
+        } catch (err) {
+          alert('匯入失敗：檔案格式不是有效的 JSON 備份檔');
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    /* Modal Helpers */
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    document.querySelectorAll('.modal-backdrop').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target === el) el.classList.remove('open');
+      });
+    });
+
+    /* Toolbar Events */
+    document.getElementById('btnAddCounter').addEventListener('click', openAddCounterModal);
+    document.getElementById('btnDataMenu').addEventListener('click', openDataModal);
+    document.getElementById('btnOpenCalc').addEventListener('click', openCalcModal);
+
+    document.getElementById('btnToggleTheme').addEventListener('click', () => {
+      state.darkMode = !state.darkMode;
+      saveState();
+      applyTheme();
+      showToast(state.darkMode ? '已切換為深色模式' : '已切換為淺色模式');
+    });
+
+    document.getElementById('btnToggleView').addEventListener('click', () => {
+      state.viewMode = state.viewMode === 'large' ? 'small' : 'large';
+      saveState();
+      render();
+    });
+
+    document.getElementById('btnToggleReorder').addEventListener('click', () => {
+      isReorderMode = !isReorderMode;
+      render();
+      if (isReorderMode) showToast('請使用 ▲ ▼ 按鈕或拖曳卡片調整順序');
+    });
+
+    document.getElementById('btnToggleTTS').addEventListener('click', () => {
+      state.ttsEnabled = !state.ttsEnabled;
+      saveState();
+      render();
+      if (state.ttsEnabled) speakText('語音播報已開啟');
+    });
+
+    /* Keyboard Shortcuts (Calculator, Modals & Single Mode) */
+    document.addEventListener('keydown', e => {
+      const openModals = document.querySelectorAll('.modal-backdrop.open');
+      const topModal = openModals[openModals.length - 1];
+      const anyModalOpen = openModals.length > 0;
+      const calcOpen = document.getElementById('calcModal').classList.contains('open');
+
+      if (e.key === 'Escape') {
+        if (topModal) {
+          topModal.classList.remove('open');
+          return;
+        }
+        if (singleCounterId) {
+          exitSingleMode();
+          return;
+        }
+      }
+
+      if (calcOpen && document.activeElement.tagName !== 'SELECT') {
+        if ((e.key >= '0' && e.key <= '9') || e.key === '.' || e.key === '(' || e.key === ')') {
+          e.preventDefault();
+          calcInput(e.key);
+        } else if (e.key === '+') {
+          e.preventDefault();
+          calcInput('+');
+        } else if (e.key === '-') {
+          e.preventDefault();
+          calcInput('−');
+        } else if (e.key === '*') {
+          e.preventDefault();
+          calcInput('×');
+        } else if (e.key === '/') {
+          e.preventDefault();
+          calcInput('÷');
+        } else if (e.key === 'Enter' || e.key === '=') {
+          e.preventDefault();
+          calcEquals();
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          calcBackspace();
+        } else if (e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          calcClear();
+        }
+        return;
+      }
+
+      if (singleCounterId && !anyModalOpen) {
+        if (e.key === ' ' || e.key === 'ArrowUp' || e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          tapFromSingle(1);
+        } else if (e.key === 'ArrowDown' || e.key === '-') {
+          e.preventDefault();
+          tapFromSingle(-1);
+        }
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      checkAndroidDesktopMode();
+      fitCalcModal();
+    });
+    checkAndroidDesktopMode();
+    render();
+  </script>
+</body>
+</html>
+```
